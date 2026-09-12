@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comunicazione di annotazione — Stato Civile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#20261f;
+    --panel:#f3f1ea;
+    --panel-line:#dedad0;
+    --paper:#fdfcf8;
+    --paper-shadow: 0 1px 2px rgba(32,38,31,0.08), 0 18px 40px -22px rgba(32,38,31,0.35);
+    --green:#274b3b;
+    --green-dark:#1a352a;
+    --brass:#93712e;
+    --brass-soft:#e9dfc4;
+    --muted:#6b7267;
+    --field-bg:#ffffff;
+    --field-border:#cbc6b8;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink);
+    background-image:
+      radial-gradient(circle at 15% 0%, #2b3327 0%, transparent 55%),
+      radial-gradient(circle at 85% 100%, #2a3126 0%, transparent 55%);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", sans-serif;
+    min-height:100vh;
+  }
+  .layout{
+    display:grid;
+    grid-template-columns: 400px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width: 980px){
+    .layout{ grid-template-columns: 1fr; }
+  }
+
+  /* ---------- FORM PANEL ---------- */
+  .panel{
+    background:var(--panel);
+    border-right:1px solid var(--panel-line);
+    padding:28px 26px 120px;
+    overflow-y:auto;
+  }
+  .panel-eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:11px;
+    letter-spacing:.04em;
+    color:var(--brass);
+    margin:0 0 4px;
+  }
+  .panel h1{
+    font-family:"Newsreader", serif;
+    font-weight:600;
+    font-size:23px;
+    line-height:1.25;
+    margin:0 0 6px;
+    color:var(--green-dark);
+  }
+  .panel .lede{
+    font-size:13px;
+    color:var(--muted);
+    line-height:1.5;
+    margin:0 0 26px;
+  }
+  fieldset{
+    border:0;
+    padding:0;
+    margin:0 0 22px;
+  }
+  .field{ margin-bottom:16px; }
+  .field:last-child{ margin-bottom:0; }
+  label{
+    display:block;
+    font-size:12.5px;
+    font-weight:500;
+    color:var(--green-dark);
+    margin-bottom:6px;
+  }
+  .hint{
+    font-size:11.5px;
+    color:var(--muted);
+    margin-top:5px;
+    line-height:1.45;
+  }
+  input[type=text], input[type=date], textarea, select{
+    width:100%;
+    font-family:"IBM Plex Sans", sans-serif;
+    font-size:13.5px;
+    color:var(--ink);
+    background:var(--field-bg);
+    border:1px solid var(--field-border);
+    border-radius:var(--radius);
+    padding:9px 10px;
+    outline:none;
+    transition:border-color .15s ease, box-shadow .15s ease;
+  }
+  input[type=text]:focus, input[type=date]:focus, textarea:focus, select:focus{
+    border-color:var(--green);
+    box-shadow:0 0 0 3px rgba(39,75,59,0.12);
+  }
+  textarea{ resize:vertical; line-height:1.5; }
+
+  .segmented{
+    display:flex;
+    border:1px solid var(--field-border);
+    border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .segmented button{
+    flex:1;
+    border:0;
+    background:var(--field-bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans", sans-serif;
+    font-size:13px;
+    padding:9px 4px;
+    cursor:pointer;
+    border-left:1px solid var(--field-border);
+  }
+  .segmented button:first-child{ border-left:0; }
+  .segmented button.active{
+    background:var(--green);
+    color:#fff;
+  }
+
+  .derived-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:10px;
+    padding:12px;
+    background:#eeece2;
+    border:1px dashed var(--field-border);
+    border-radius:var(--radius);
+  }
+  .derived-grid .mini label{
+    font-size:11px;
+    color:var(--muted);
+    margin-bottom:4px;
+    text-transform:none;
+  }
+  .derived-grid .mini input{
+    padding:7px 8px;
+    font-size:13px;
+  }
+  .derived-grid .mini.full{ grid-column:1 / -1; }
+
+  .logo-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .logo-preview{
+    width:44px; height:44px;
+    border:1px solid var(--field-border);
+    border-radius:var(--radius);
+    background:#fff;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
+    flex-shrink:0;
+  }
+  .logo-preview img{ width:100%; height:100%; object-fit:contain; }
+  .file-btn{
+    font-size:12.5px;
+    color:var(--green-dark);
+    border:1px solid var(--field-border);
+    background:#fff;
+    border-radius:var(--radius);
+    padding:8px 12px;
+    cursor:pointer;
+  }
+  .file-btn input{ display:none; }
+  .clear-link{
+    font-size:11.5px;
+    color:var(--muted);
+    text-decoration:underline;
+    cursor:pointer;
+    background:none;
+    border:0;
+    padding:0;
+  }
+
+  .generate-btn{
+    width:100%;
+    background:var(--green);
+    color:#fff;
+    border:0;
+    border-radius:var(--radius);
+    font-family:"IBM Plex Sans", sans-serif;
+    font-weight:500;
+    font-size:14.5px;
+    padding:13px 16px;
+    cursor:pointer;
+    margin-top:6px;
+    transition:background .15s ease;
+  }
+  .generate-btn:hover{ background:var(--green-dark); }
+  .generate-btn:active{ transform:translateY(1px); }
+
+  /* ---------- PREVIEW SIDE ---------- */
+  .preview-side{
+    padding:44px 40px 80px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    overflow-y:auto;
+  }
+  .sheet{
+    width:210mm;
+    min-height:297mm;
+    max-width:100%;
+    background:var(--paper);
+    box-shadow:var(--paper-shadow);
+    padding:20mm 25mm;
+    font-family:"Newsreader", serif;
+    color:#161a14;
+    font-size:11.3pt;
+    line-height:1.5;
+  }
+  .sheet-header{
+    display:flex;
+    align-items:flex-start;
+    gap:14px;
+    margin-bottom:6mm;
+  }
+  .sheet-crest{
+    width:20mm; height:20mm;
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sheet-crest img{ width:100%; height:100%; object-fit:contain; }
+  .sheet-titleblock{ flex:1; text-align:center; }
+  .sheet-titleblock h2{
+    font-family:"Newsreader", serif;
+    font-weight:600;
+    font-size:19.5pt;
+    margin:0 0 3mm;
+    letter-spacing:.01em;
+  }
+  .sheet-titleblock p{
+    margin:0;
+    font-size:9.6pt;
+  }
+  .sheet-office{
+    text-align:center;
+    font-weight:600;
+    font-size:11.5pt;
+    margin:8mm 0 10mm;
+  }
+  .sheet-prot{
+    font-size:10pt;
+    margin-bottom:12mm;
+  }
+  .sheet-underline{
+    display:inline-block;
+    border-bottom:1px solid #444;
+    min-width:60px;
+  }
+  .sheet-intro{
+    text-align:center;
+    margin-bottom:3mm;
+  }
+  .sheet-atto{
+    text-align:center;
+    margin-bottom:3mm;
+  }
+  .sheet-record{
+    text-align:center;
+    margin-bottom:14mm;
+  }
+  .sheet-box{
+    border:1px solid #1a1a1a;
+    padding:5mm 6mm;
+    font-weight:600;
+    margin-bottom:16mm;
+    white-space:pre-wrap;
+  }
+  .sheet-box:empty::before{
+    content:"Il testo dell'annotazione comparirà qui.";
+    font-weight:400;
+    font-style:italic;
+    color:#8a8a80;
+  }
+  .sheet-footer-date{
+    font-weight:600;
+    margin-bottom:14mm;
+  }
+  .sheet-signblock{
+    margin-left:auto;
+    width:70mm;
+    text-align:center;
+    font-size:10pt;
+  }
+  .sheet-signblock .role{ margin-bottom:2mm; }
+  .sheet-signblock .name{ margin-bottom:1mm; }
+  .sheet-signblock .law{
+    font-style:italic;
+    font-size:8.6pt;
+    margin-bottom:10mm;
+  }
+  .sheet-signblock .line{
+    border-bottom:1px solid #444;
+    width:100%;
+  }
+
+  .download-bar{
+    width:210mm;
+    max-width:100%;
+    margin-top:16px;
+    display:flex;
+    justify-content:flex-end;
+  }
+  .download-btn{
+    background:var(--brass);
+    color:#fff;
+    border:0;
+    border-radius:var(--radius);
+    font-family:"IBM Plex Sans", sans-serif;
+    font-weight:500;
+    font-size:14px;
+    padding:12px 22px;
+    cursor:pointer;
+  }
+  .download-btn:hover{ filter:brightness(1.05); }
+</style>
+</head>
+<body>
+
+<div class="layout">
+  <!-- FORM -->
+  <div class="panel">
+    <p class="panel-eyebrow">Comune di Viterbo · Ufficio dello Stato Civile</p>
+    <h1>Comunicazione di annotazione</h1>
+    <p class="lede">Compila i campi: l'anteprima a destra si aggiorna man mano e da lì potrai scaricare il PDF.</p>
+
+    <fieldset>
+      <div class="field logo-row">
+        <div class="logo-preview" id="logoPreview">—</div>
+        <label class="file-btn">Carica stemma (opzionale)
+          <input type="file" id="stemmaInput" accept="image/*">
+        </label>
+        <button type="button" class="clear-link" id="clearLogo" style="display:none;">rimuovi</button>
+      </div>
+      <p class="hint">Il modulo non include lo stemma ufficiale del Comune: se ne hai il file, caricalo qui — comparirà nell'intestazione e nel PDF.</p>
+    </fieldset>
+
+    <fieldset>
+      <div class="field">
+        <label for="nominativo">Nominativo</label>
+        <input type="text" id="nominativo" placeholder="Es. Morucci Marina">
+      </div>
+      <div class="field">
+        <label for="dataNascita">Nata/o il</label>
+        <input type="date" id="dataNascita">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="field">
+        <label>Tipo atto</label>
+        <div class="segmented" id="tipoAtto">
+          <button type="button" data-val="Nascita" class="active">Nascita</button>
+          <button type="button" data-val="Matrimonio">Matrimonio</button>
+          <button type="button" data-val="Morte">Morte</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="estremiAtto">Estremi atto</label>
+        <input type="text" id="estremiAtto" placeholder="Es. 1955 1A n. 8 uff 3">
+        <div class="derived-grid">
+          <div class="mini">
+            <label for="dNumero">Numero</label>
+            <input type="text" id="dNumero">
+          </div>
+          <div class="mini">
+            <label for="dAnno">Anno</label>
+            <input type="text" id="dAnno">
+          </div>
+          <div class="mini">
+            <label for="dParte">Parte</label>
+            <input type="text" id="dParte">
+          </div>
+          <div class="mini">
+            <label for="dSerie">Serie</label>
+            <input type="text" id="dSerie">
+          </div>
+          <div class="mini full">
+            <label for="dUfficio">Ufficio (facoltativo)</label>
+            <input type="text" id="dUfficio">
+          </div>
+        </div>
+        <p class="hint">Scrivi gli estremi come vengono più comodi: vengono interpretati automaticamente nei campi sotto. Controllali e correggili se serve — restano poi modificabili a mano.</p>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="field">
+        <label for="testoAnnotazione">Testo dell'annotazione</label>
+        <textarea id="testoAnnotazione" rows="8" placeholder="Es. Con sentenza del Tribunale di ..., in data ... n. ..., annotata nell'atto di ... in data ..., è stata pronunziata ..."></textarea>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <div class="field">
+        <label for="ufficiale">Ufficiale di Stato Civile</label>
+        <select id="ufficiale">
+          <option value="Roberto Galanti">Roberto Galanti</option>
+          <option value="Paola Tribuzi">Paola Tribuzi</option>
+          <option value="Paola Cardarelli">Paola Cardarelli</option>
+          <option value="Eleonora Fratichini">Eleonora Fratichini</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <button type="button" class="generate-btn" id="generateBtn">Scarica PDF</button>
+  </div>
+
+  <!-- PREVIEW -->
+  <div class="preview-side">
+    <div class="sheet" id="sheet">
+      <div class="sheet-header">
+        <div class="sheet-crest" id="sheetCrest"></div>
+        <div class="sheet-titleblock">
+          <h2>COMUNE DI VITERBO</h2>
+          <p>Piazza Fontana Grande n. 19 - Via I. Garbini n. 84/B</p>
+          <p>01100 Viterbo (VT)</p>
+        </div>
+        <div style="width:20mm;flex-shrink:0;"></div>
+      </div>
+
+      <div class="sheet-office">UFFICIO DELLO STATO CIVILE</div>
+
+      <div class="sheet-prot">Prot. N. <span class="sheet-underline">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> &nbsp;Lì <span class="sheet-underline">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span></div>
+
+      <div class="sheet-intro" id="sheetIntro">Si invia la comunicazione sotto riportata ai fini dell'annotazione da eseguirsi su</div>
+
+      <div class="sheet-atto" id="sheetAtto">Atto di Nascita n.____ p.____ s.____ anno ____</div>
+
+      <div class="sheet-record" id="sheetRecord">relativo a ______________ nato/a il __/__/____</div>
+
+      <div class="sheet-box" id="sheetBox"></div>
+
+      <div class="sheet-footer-date" id="sheetFooterDate">VITERBO, lì __-__-____</div>
+
+      <div class="sheet-signblock">
+        <div class="role">L'Ufficiale di Stato Civile</div>
+        <div class="name" id="sheetOfficialName">( GALANTI ROBERTO )</div>
+        <div class="law">Firma autografa omessa ai sensi dell'art.3 comma 2 D.L.n.39/93</div>
+        <div class="line"></div>
+      </div>
+    </div>
+
+    <div class="download-bar">
+      <button type="button" class="download-btn" id="generateBtn2">Scarica PDF</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const state = {
+    tipoAtto: 'Nascita',
+    logoDataUrl: null,
+    logoMime: null
+  };
+
+  const els = {
+    nominativo: document.getElementById('nominativo'),
+    dataNascita: document.getElementById('dataNascita'),
+    estremiAtto: document.getElementById('estremiAtto'),
+    dNumero: document.getElementById('dNumero'),
+    dAnno: document.getElementById('dAnno'),
+    dParte: document.getElementById('dParte'),
+    dSerie: document.getElementById('dSerie'),
+    dUfficio: document.getElementById('dUfficio'),
+    testoAnnotazione: document.getElementById('testoAnnotazione'),
+    ufficiale: document.getElementById('ufficiale'),
+    stemmaInput: document.getElementById('stemmaInput'),
+    logoPreview: document.getElementById('logoPreview'),
+    clearLogo: document.getElementById('clearLogo'),
+    sheetCrest: document.getElementById('sheetCrest'),
+    sheetIntro: document.getElementById('sheetIntro'),
+    sheetAtto: document.getElementById('sheetAtto'),
+    sheetRecord: document.getElementById('sheetRecord'),
+    sheetBox: document.getElementById('sheetBox'),
+    sheetFooterDate: document.getElementById('sheetFooterDate'),
+    sheetOfficialName: document.getElementById('sheetOfficialName'),
+  };
+
+  const OFFICIALS = {
+    "Roberto Galanti": "GALANTI ROBERTO",
+    "Paola Tribuzi": "TRIBUZI PAOLA",
+    "Paola Cardarelli": "CARDARELLI PAOLA",
+    "Eleonora Fratichini": "FRATICHINI ELEONORA"
+  };
+
+  function toRoman(num){
+    const map = [[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+    let res = '';
+    for (const [v,s] of map){ while(num >= v){ res += s; num -= v; } }
+    return res || String(num);
+  }
+
+  function parseEstremi(raw){
+    const result = { numero:'', parte:'', serie:'', anno:'', ufficio:'' };
+    if (!raw) return result;
+    let working = ' ' + raw.trim() + ' ';
+
+    const annoMatch = working.match(/\b(1[7-9]\d{2}|20\d{2})\b/);
+    if (annoMatch){ result.anno = annoMatch[1]; working = working.replace(annoMatch[0], ' '); }
+
+    const uffMatch = working.match(/uff\.?\s*(\d+)/i);
+    if (uffMatch){ result.ufficio = uffMatch[1]; working = working.replace(uffMatch[0], ' '); }
+
+    const numMatch = working.match(/\bn\.?\s*(\d+)/i);
+    if (numMatch){ result.numero = numMatch[1]; working = working.replace(numMatch[0], ' '); }
+
+    const parteMatch = working.match(/\bp\.?\s*([ivxIVX]+)\b/i);
+    if (parteMatch){ result.parte = parteMatch[1].toUpperCase(); working = working.replace(parteMatch[0], ' '); }
+
+    const serieMatch = working.match(/\bs\.?\s*([a-zA-Z])\b/);
+    if (serieMatch){ result.serie = serieMatch[1].toUpperCase(); working = working.replace(serieMatch[0], ' '); }
+
+    if (!result.parte || !result.serie){
+      const psMatch = working.match(/\b(\d{1,2}|[ivxIVX]{1,4})\s*([a-zA-Z])\b/i);
+      if (psMatch){
+        if (!result.parte){
+          const parteRaw = psMatch[1];
+          result.parte = /^\d+$/.test(parteRaw) ? toRoman(parseInt(parteRaw,10)) : parteRaw.toUpperCase();
+        }
+        if (!result.serie) result.serie = psMatch[2].toUpperCase();
+      }
+    }
+    return result;
+  }
+
+  function fmtDateSlash(isoDate){
+    if (!isoDate) return '__/__/____';
+    const [y,m,d] = isoDate.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function fmtDateDash(date){
+    const d = String(date.getDate()).padStart(2,'0');
+    const m = String(date.getMonth()+1).padStart(2,'0');
+    const y = date.getFullYear();
+    return `${d}-${m}-${y}`;
+  }
+
+  function upper(s){ return (s || '').toString().trim().toUpperCase(); }
+
+  // --- tipo atto segmented control ---
+  document.getElementById('tipoAtto').addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    state.tipoAtto = btn.dataset.val;
+    document.querySelectorAll('#tipoAtto button').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  // --- estremi atto auto-parse ---
+  els.estremiAtto.addEventListener('input', () => {
+    const parsed = parseEstremi(els.estremiAtto.value);
+    els.dNumero.value = parsed.numero;
+    els.dAnno.value = parsed.anno;
+    els.dParte.value = parsed.parte;
+    els.dSerie.value = parsed.serie;
+    els.dUfficio.value = parsed.ufficio;
+    render();
+  });
+
+  // --- logo upload ---
+  els.stemmaInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.logoDataUrl = reader.result;
+      state.logoMime = file.type;
+      els.logoPreview.innerHTML = `<img src="${state.logoDataUrl}" alt="stemma">`;
+      els.clearLogo.style.display = 'inline';
+      render();
+    };
+    reader.readAsDataURL(file);
+  });
+  els.clearLogo.addEventListener('click', () => {
+    state.logoDataUrl = null;
+    state.logoMime = null;
+    els.stemmaInput.value = '';
+    els.logoPreview.innerHTML = '—';
+    els.clearLogo.style.display = 'none';
+    render();
+  });
+
+  // --- render live preview ---
+  function render(){
+    const nominativo = upper(els.nominativo.value) || '______________';
+    const dataNascita = fmtDateSlash(els.dataNascita.value);
+    const numero = els.dNumero.value.trim() || '____';
+    const anno = els.dAnno.value.trim() || '____';
+    const parte = els.dParte.value.trim() || '__';
+    const serie = els.dSerie.value.trim() || '__';
+    const ufficio = els.dUfficio.value.trim();
+    const testo = els.testoAnnotazione.value.trim();
+    const ufficialeKey = els.ufficiale.value;
+
+    els.sheetIntro.textContent = `Si invia la comunicazione sotto riportata ai fini dell'annotazione da eseguirsi su`;
+
+    const uffPart = ufficio ? ` (uff. ${ufficio})` : '';
+    els.sheetAtto.textContent = `Atto di ${state.tipoAtto} n.${numero} p.${parte} s.${serie} anno ${anno}${uffPart}`;
+    els.sheetRecord.textContent = `relativo a ${nominativo} nato/a il ${dataNascita}`;
+
+    els.sheetBox.textContent = testo;
+
+    const oggi = fmtDateDash(new Date());
+    els.sheetFooterDate.textContent = `VITERBO, lì ${oggi}`;
+
+    els.sheetOfficialName.textContent = `( ${OFFICIALS[ufficialeKey]} )`;
+
+    if (state.logoDataUrl){
+      els.sheetCrest.innerHTML = `<img src="${state.logoDataUrl}" alt="stemma">`;
+    } else {
+      els.sheetCrest.innerHTML = '';
+    }
+  }
+
+  ['nominativo','dataNascita','testoAnnotazione','ufficiale'].forEach(id => {
+    document.getElementById(id).addEventListener('input', render);
+    document.getElementById(id).addEventListener('change', render);
+  });
+  ['dNumero','dAnno','dParte','dSerie','dUfficio'].forEach(id => {
+    document.getElementById(id).addEventListener('input', render);
+  });
+
+  // --- PDF generation ---
+  function generatePDF(){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const pageWidth = 210;
+    const marginL = 25;
+    const marginR = 25;
+    const contentWidth = pageWidth - marginL - marginR;
+    const centerX = pageWidth / 2;
+
+    const nominativo = upper(els.nominativo.value) || '______________';
+    const dataNascita = fmtDateSlash(els.dataNascita.value);
+    const numero = els.dNumero.value.trim() || '____';
+    const anno = els.dAnno.value.trim() || '____';
+    const parte = els.dParte.value.trim() || '__';
+    const serie = els.dSerie.value.trim() || '__';
+    const ufficio = els.dUfficio.value.trim();
+    const uffPart = ufficio ? ` (uff. ${ufficio})` : '';
+    const testo = els.testoAnnotazione.value.trim() || ' ';
+    const ufficialeKey = els.ufficiale.value;
+    const ufficialeNome = OFFICIALS[ufficialeKey];
+    const oggi = fmtDateDash(new Date());
+
+    let y = 18;
+
+    // crest
+    if (state.logoDataUrl){
+      try{
+        let fmt = 'PNG';
+        if (state.logoMime && state.logoMime.includes('jpeg')) fmt = 'JPEG';
+        if (state.logoMime && state.logoMime.includes('jpg')) fmt = 'JPEG';
+        if (state.logoMime && state.logoMime.includes('webp')) fmt = 'WEBP';
+        doc.addImage(state.logoDataUrl, fmt, marginL, y - 4, 22, 22);
+      }catch(err){ /* ignore bad image */ }
+    }
+
+    // header title block (centered on full page)
+    doc.setFont('times','bold');
+    doc.setFontSize(19);
+    doc.text('COMUNE DI VITERBO', centerX, y + 4, { align:'center' });
+
+    doc.setFont('times','normal');
+    doc.setFontSize(10);
+    doc.text('Piazza Fontana Grande n. 19 - Via I. Garbini n. 84/B', centerX, y + 10, { align:'center' });
+    doc.text('01100 Viterbo (VT)', centerX, y + 15, { align:'center' });
+
+    y += 30;
+
+    doc.setFont('times','bold');
+    doc.setFontSize(12);
+    doc.text('UFFICIO DELLO STATO CIVILE', centerX, y, { align:'center' });
+
+    y += 14;
+
+    doc.setFont('times','normal');
+    doc.setFontSize(10.5);
+    doc.text('Prot. N. ________ Lì __________________', marginL, y);
+
+    y += 14;
+
+    doc.setFontSize(11);
+    const introText = `Si invia la comunicazione sotto riportata ai fini dell'annotazione da eseguirsi su`;
+    const introLines = doc.splitTextToSize(introText, contentWidth - 20);
+    introLines.forEach((line) => {
+      doc.text(line, centerX, y, { align:'center' });
+      y += 6;
+    });
+
+    y += 2;
+
+    const attoText = `Atto di ${state.tipoAtto} n.${numero} p.${parte} s.${serie} anno ${anno}${uffPart}`;
+    const attoLines = doc.splitTextToSize(attoText, contentWidth - 10);
+    attoLines.forEach((line) => {
+      doc.text(line, centerX, y, { align:'center' });
+      y += 6;
+    });
+
+    y += 2;
+
+    const recordText = `relativo a ${nominativo} nato/a il ${dataNascita}`;
+    const recordLines = doc.splitTextToSize(recordText, contentWidth - 10);
+    recordLines.forEach((line) => {
+      doc.text(line, centerX, y, { align:'center' });
+      y += 6;
+    });
+
+    y += 10;
+
+    // annotation box
+    doc.setFont('times','bold');
+    doc.setFontSize(11);
+    const boxPadding = 5;
+    const boxTextWidth = contentWidth - boxPadding * 2;
+    const boxLines = doc.splitTextToSize(testo, boxTextWidth);
+    const lineHeight = 5.6;
+    const boxHeight = boxLines.length * lineHeight + boxPadding * 2 - 1;
+    doc.setDrawColor(20,20,20);
+    doc.rect(marginL, y, contentWidth, boxHeight);
+    let textY = y + boxPadding + 3.5;
+    boxLines.forEach((line) => {
+      doc.text(line, marginL + boxPadding, textY);
+      textY += lineHeight;
+    });
+
+    y += boxHeight + 16;
+
+    // footer date (mixed weight)
+    doc.setFontSize(11);
+    doc.setFont('times','bold');
+    const partVITERBO = 'VITERBO';
+    doc.text(partVITERBO, marginL, y);
+    let xCursor = marginL + doc.getTextWidth(partVITERBO);
+    doc.setFont('times','normal');
+    const partComma = ', lì ';
+    doc.text(partComma, xCursor, y);
+    xCursor += doc.getTextWidth(partComma);
+    doc.setFont('times','bold');
+    doc.text(oggi, xCursor, y);
+
+    // signature block (right side)
+    const signCenterX = 155;
+    let signY = y + 10;
+    doc.setFont('times','normal');
+    doc.setFontSize(10);
+    doc.text("L'Ufficiale di Stato Civile", signCenterX, signY, { align:'center' });
+    signY += 7;
+    doc.text(`( ${ufficialeNome} )`, signCenterX, signY, { align:'center' });
+    signY += 5.5;
+    doc.setFont('times','italic');
+    doc.setFontSize(8.5);
+    doc.text('Firma autografa omessa ai sensi dell\'art.3 comma 2 D.L.n.39/93', signCenterX, signY, { align:'center' });
+    signY += 14;
+    doc.setDrawColor(60,60,60);
+    doc.line(signCenterX - 35, signY, signCenterX + 35, signY);
+
+    const safeNominativo = (els.nominativo.value.trim() || 'annotazione').replace(/[^a-z0-9]+/gi,'_');
+    doc.save(`annotazione_${safeNominativo}.pdf`);
+  }
+
+  document.getElementById('generateBtn').addEventListener('click', generatePDF);
+  document.getElementById('generateBtn2').addEventListener('click', generatePDF);
+
+  render();
+})();
+</script>
+</body>
+</html>

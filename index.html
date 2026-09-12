@@ -443,7 +443,7 @@
 
       <div class="sheet-intro" id="sheetIntro">Si invia la comunicazione sotto riportata ai fini dell'annotazione da eseguirsi su</div>
 
-      <div class="sheet-atto" id="sheetAtto">Atto di Nascita n.____ p.____ s.____ anno ____</div>
+      <div class="sheet-atto" id="sheetAtto">Atto di Nascita anno ____ p.____ s.____ n.____</div>
 
       <div class="sheet-record" id="sheetRecord">relativo a ______________ nato/a il __/__/____</div>
 
@@ -455,7 +455,6 @@
         <div class="role">L'Ufficiale di Stato Civile</div>
         <div class="name" id="sheetOfficialName">( GALANTI ROBERTO )</div>
         <div class="law">Firma autografa omessa ai sensi dell'art.3 comma 2 D.L.n.39/93</div>
-        <div class="line"></div>
       </div>
     </div>
 
@@ -616,7 +615,7 @@
     els.sheetIntro.textContent = `Si invia la comunicazione sotto riportata ai fini dell'annotazione da eseguirsi su`;
 
     const uffPart = ufficio ? ` (uff. ${ufficio})` : '';
-    els.sheetAtto.textContent = `Atto di ${state.tipoAtto} n.${numero} p.${parte} s.${serie} anno ${anno}${uffPart}`;
+    els.sheetAtto.textContent = `Atto di ${state.tipoAtto} anno ${anno} p.${parte} s.${serie} n.${numero}${uffPart}`;
     els.sheetRecord.textContent = `relativo a ${nominativo} nato/a il ${dataNascita}`;
 
     els.sheetBox.textContent = testo;
@@ -711,7 +710,7 @@
 
     y += 2;
 
-    const attoText = `Atto di ${state.tipoAtto} n.${numero} p.${parte} s.${serie} anno ${anno}${uffPart}`;
+    const attoText = `Atto di ${state.tipoAtto} anno ${anno} p.${parte} s.${serie} n.${numero}${uffPart}`;
     const attoLines = doc.splitTextToSize(attoText, contentWidth - 10);
     attoLines.forEach((line) => {
       doc.text(line, centerX, y, { align:'center' });
@@ -772,9 +771,6 @@
     doc.setFont('times','italic');
     doc.setFontSize(8.5);
     doc.text('Firma autografa omessa ai sensi dell\'art.3 comma 2 D.L.n.39/93', signCenterX, signY, { align:'center' });
-    signY += 14;
-    doc.setDrawColor(60,60,60);
-    doc.line(signCenterX - 35, signY, signCenterX + 35, signY);
 
     const safeNominativo = (els.nominativo.value.trim() || 'annotazione').replace(/[^a-z0-9]+/gi,'_');
     doc.save(`annotazione_${safeNominativo}.pdf`);

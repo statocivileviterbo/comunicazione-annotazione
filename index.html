@@ -773,7 +773,7 @@
     doc.text('Firma autografa omessa ai sensi dell\'art.3 comma 2 D.L.n.39/93', signCenterX, signY, { align:'center' });
 
     const safeNominativo = (els.nominativo.value.trim() || 'annotazione').replace(/[^a-z0-9]+/gi,'_');
-    doc.save(`annotazione_${safeNominativo}.pdf`);
+    doc.save(`comunicazione_annotazione_${safeNominativo}.pdf`);
   }
 
   document.getElementById('generateBtn').addEventListener('click', generatePDF);
